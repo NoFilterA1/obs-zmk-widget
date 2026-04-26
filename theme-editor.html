@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ZMK Widget — Theme Editor</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg:       #09090f;
+  --surf:     #0f0f18;
+  --surf2:    #13131e;
+  --surf3:    #181825;
+  --bd:       #1c1c2a;
+  --bd2:      #242438;
+  --text:     #b8b8cc;
+  --text2:    #6b6b88;
+  --text3:    #333348;
+  --accent:   #7733cc;
+  --accent-d: #4a1a88;
+  --accent-g: rgba(119,51,204,.3);
+  --sidebar:  214px;
+  --hdr:      42px;
+}
+
+html, body { height: 100%; overflow: hidden; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+  font-size: 11px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── scrollbars ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bd2); border-radius: 3px; }
+
+/* ══════════════════════════════════════════════════════════
+   TOP BAR
+══════════════════════════════════════════════════════════ */
+.topbar {
+  height: var(--hdr);
+  background: var(--surf);
+  border-bottom: 1px solid var(--bd);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 8px;
+  flex-shrink: 0;
+  user-select: none;
+}
+.tb-logo  { font-size: 13px; font-weight: 700; color: #e0e0f0; letter-spacing: 1px; }
+.tb-slash { color: var(--bd2); }
+.tb-sub   { font-size: 10px; color: var(--text2); letter-spacing: .4px; }
+.tb-ver   {
+  font-size: 9px; color: var(--text3);
+  background: var(--surf2); border: 1px solid var(--bd);
+  border-radius: 3px; padding: 1px 5px;
+}
+.ws-chip {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 5px;
+  font-size: 9px; color: var(--text2); letter-spacing: .4px;
+  background: var(--surf2); border: 1px solid var(--bd);
+  border-radius: 10px; padding: 3px 10px;
+}
+.ws-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #ff3333; flex-shrink: 0;
+  transition: background .3s, box-shadow .3s;
+}
+.ws-dot.ok { background: #33ff66; box-shadow: 0 0 5px #33ff6688; }
+
+/* ══════════════════════════════════════════════════════════
+   LAYOUT
+══════════════════════════════════════════════════════════ */
+.layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ══════════════════════════════════════════════════════════
+   SIDEBAR
+══════════════════════════════════════════════════════════ */
+.sidebar {
+  width: var(--sidebar);
+  flex-shrink: 0;
+  background: var(--surf);
+  border-right: 1px solid var(--bd);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.sb-section {
+  padding: 10px 0 6px;
+  border-bottom: 1px solid var(--bd);
+}
+.sb-section:last-child { border-bottom: none; flex: 1; }
+
+.sb-head {
+  display: flex; align-items: center;
+  padding: 0 12px 6px;
+}
+.sb-title {
+  font-size: 9px; font-weight: 700; letter-spacing: 2px;
+  color: var(--text3); text-transform: uppercase; flex: 1;
+}
+.btn-new {
+  width: 18px; height: 18px;
+  background: transparent; border: 1px solid var(--bd2);
+  color: var(--text2); border-radius: 4px; cursor: pointer;
+  font-size: 15px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  transition: color .12s, border-color .12s, background .12s;
+  font-family: inherit; padding: 0;
+}
+.btn-new:hover { color: #ccc; border-color: #555; background: var(--surf3); }
+
+.theme-item {
+  display: flex; align-items: center;
+  padding: 5px 12px;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  gap: 7px;
+  transition: background .08s, border-color .08s;
+}
+.theme-item:hover { background: var(--surf2); }
+.theme-item.active {
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  border-left-color: var(--accent);
+}
+
+.ti-dots { display: flex; gap: 2px; flex-shrink: 0; }
+.ti-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.06);
+}
+.ti-name {
+  font-size: 10px; color: var(--text2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  flex: 1;
+}
+.theme-item.active .ti-name { color: #d0d0e8; }
+
+.ti-badge {
+  font-size: 7px; color: #cc88ff; letter-spacing: .3px; flex-shrink: 0;
+}
+.ti-del {
+  display: none;
+  background: none; border: none; cursor: pointer;
+  color: var(--text3); padding: 2px 3px; font-size: 12px;
+  line-height: 1; border-radius: 3px; flex-shrink: 0;
+  transition: color .1s, background .1s;
+  font-family: inherit;
+}
+.theme-item:hover .ti-del { display: flex; align-items: center; }
+.ti-del:hover { color: #ff4444 !important; background: #2a0f0f; }
+
+.sb-empty {
+  padding: 6px 12px;
+  font-size: 9px; color: var(--text3);
+}
+
+/* ══════════════════════════════════════════════════════════
+   EDITOR AREA
+══════════════════════════════════════════════════════════ */
+.editor-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* editor top bar */
+.ed-hdr {
+  height: var(--hdr);
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--bd);
+  background: var(--surf);
+  flex-shrink: 0;
+}
+.theme-name-input {
+  flex: 1; max-width: 260px;
+  background: var(--surf3); color: #d8d8f0;
+  border: 1px solid var(--bd2); border-radius: 5px;
+  padding: 5px 10px;
+  font-family: inherit; font-size: 11px;
+  outline: none;
+  transition: border-color .15s;
+}
+.theme-name-input:focus { border-color: var(--accent); }
+.theme-name-input[readonly] { color: var(--text2); cursor: default; background: transparent; border-color: transparent; }
+
+.dirty-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #ffaa33;
+  opacity: 0; transition: opacity .2s;
+  flex-shrink: 0;
+}
+.dirty-dot.show { opacity: 1; }
+
+.ed-actions { display: flex; gap: 6px; margin-left: auto; align-items: center; }
+
+.btn {
+  padding: 5px 13px; border-radius: 4px;
+  font-family: inherit; font-size: 10px; font-weight: 700;
+  cursor: pointer; border: 1px solid; letter-spacing: .4px;
+  transition: opacity .1s, box-shadow .15s;
+}
+.btn:hover { opacity: .8; }
+.btn-primary {
+  background: var(--accent-d); color: #cc99ff; border-color: var(--accent);
+}
+.btn-primary:hover { box-shadow: 0 0 8px var(--accent-g); opacity: 1; }
+.btn-ghost {
+  background: transparent; color: var(--text2); border-color: var(--bd2);
+}
+.btn-ghost:hover { color: var(--text); border-color: var(--bd2); }
+.toast {
+  font-size: 9px; color: #44cc77; opacity: 0;
+  transition: opacity .25s; white-space: nowrap;
+}
+.toast.show { opacity: 1; }
+
+/* editor body: 2 columns */
+.ed-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* ══════════════════════════════════════════════════════════
+   CONTROLS COLUMN
+══════════════════════════════════════════════════════════ */
+.ctrl-col {
+  width: 300px;
+  flex-shrink: 0;
+  padding: 16px 16px;
+  border-right: 1px solid var(--bd);
+  overflow-y: auto;
+}
+
+.cs { margin-bottom: 18px; }
+.cs-title {
+  font-size: 9px; font-weight: 700; letter-spacing: 2px;
+  color: var(--text3); text-transform: uppercase;
+  margin-bottom: 9px;
+  display: flex; align-items: center; gap: 6px;
+}
+.cs-title span { font-weight: 400; color: var(--text3); letter-spacing: 0; font-size: 9px; }
+
+.cr {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 7px;
+}
+.cr label { font-size: 10px; color: var(--text2); width: 68px; flex-shrink: 0; }
+.cr input[type=color] {
+  width: 26px; height: 22px;
+  border: 1px solid var(--bd2); border-radius: 3px;
+  background: none; cursor: pointer; padding: 1px;
+  flex-shrink: 0;
+}
+.cr .hx { font-size: 9px; color: var(--text2); font-variant-numeric: tabular-nums; }
+.cr input[type=range] { flex: 1; accent-color: var(--accent); cursor: pointer; }
+.cr .rv { font-size: 9px; color: var(--text2); width: 38px; text-align: right; flex-shrink: 0; }
+.cr select {
+  flex: 1; padding: 4px 8px;
+  background: var(--surf2); color: var(--text);
+  border: 1px solid var(--bd2); border-radius: 4px;
+  font-family: inherit; font-size: 10px; cursor: pointer;
+  outline: none;
+}
+
+/* layer colors 2×3 grid */
+.layer-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+.lc {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 7px;
+  background: var(--surf2); border: 1px solid var(--bd);
+  border-radius: 4px;
+}
+.lc label { font-size: 9px; color: var(--text2); width: 40px; flex-shrink: 0; }
+.lc input[type=color] {
+  width: 22px; height: 18px;
+  border: 1px solid var(--bd2); border-radius: 3px;
+  background: none; cursor: pointer; padding: 1px;
+  flex-shrink: 0;
+}
+.lc .hx { font-size: 9px; color: var(--text3); }
+
+/* ══════════════════════════════════════════════════════════
+   PREVIEW COLUMN
+══════════════════════════════════════════════════════════ */
+.prev-col {
+  flex: 1;
+  padding: 16px 18px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.pv-title {
+  font-size: 9px; font-weight: 700; letter-spacing: 2px;
+  color: var(--text3); text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+/* mini keyboard */
+.mini-kbd {
+  display: inline-flex;
+  gap: 14px;
+  padding: 10px 12px;
+  background: var(--surf2);
+  border: 1px solid var(--bd);
+  border-radius: 8px;
+}
+.mini-half { display: flex; flex-direction: column; gap: 2px; }
+.mrow      { display: flex; gap: 2px; }
+.mrow.tl   { padding-left: calc(2 * 24px + 2 * 2px); }
+.mrow.tr   { padding-right: calc(2 * 24px + 2 * 2px); }
+
+.mk {
+  width: 24px; height: 19px;
+  border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 5.5px; font-weight: 600;
+  border: 1px solid;
+  position: relative; overflow: hidden;
+  flex-shrink: 0; letter-spacing: -.2px;
+}
+.mk::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(255,255,255,.07) 0%, transparent 70%);
+  pointer-events: none;
+}
+.mk.mo { border-style: dashed; }
+
+/* layer chips */
+.chips { display: flex; gap: 4px; flex-wrap: wrap; }
+.chip {
+  padding: 2px 8px; border-radius: 20px;
+  font-size: 8px; font-weight: 700; letter-spacing: 1px;
+  border: 1px solid currentColor; opacity: .25;
+  transition: opacity .1s, box-shadow .1s;
+}
+.chip.active { opacity: 1; box-shadow: 0 0 6px currentColor; }
+
+/* pressed / idle samples */
+.samples { display: flex; gap: 12px; }
+.sg { }
+.sg-lbl {
+  font-size: 8px; color: var(--text3); letter-spacing: .5px;
+  text-transform: uppercase; margin-bottom: 5px;
+}
+.skeys { display: flex; gap: 3px; flex-wrap: wrap; }
+.sk {
+  width: 34px; height: 28px; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 8px; font-weight: 600;
+  border: 1px solid; position: relative; overflow: hidden;
+}
+.sk::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(255,255,255,.05) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* animations */
+@keyframes glow-pulse {
+  0%,100% { filter: brightness(1); }
+  50%      { filter: brightness(1.6); }
+}
+@keyframes rainbow-hue {
+  from { filter: hue-rotate(0deg); }
+  to   { filter: hue-rotate(360deg); }
+}
+@keyframes breathe {
+  0%,100% { opacity: .55; }
+  50%      { opacity: 1; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   DIALOGS
+══════════════════════════════════════════════════════════ */
+.dlg-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.7);
+  display: none; align-items: center; justify-content: center;
+  z-index: 200;
+  backdrop-filter: blur(3px);
+}
+.dlg-overlay.open { display: flex; }
+.dlg {
+  background: #14141e; border: 1px solid #2a2a3e;
+  border-radius: 10px; padding: 20px 22px; min-width: 280px;
+  box-shadow: 0 24px 64px rgba(0,0,0,.7);
+}
+.dlg-title { font-size: 12px; color: #ddd; margin-bottom: 12px; letter-spacing: .4px; }
+.dlg input[type=text] {
+  width: 100%; padding: 7px 10px;
+  background: var(--bg); color: #ccc;
+  border: 1px solid var(--bd2); border-radius: 4px;
+  font-family: inherit; font-size: 11px; margin-bottom: 14px;
+  outline: none; transition: border-color .15s;
+}
+.dlg input[type=text]:focus { border-color: var(--accent); }
+.dlg-actions { display: flex; gap: 8px; justify-content: flex-end; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════ TOP BAR ═══════════════════════ -->
+<div class="topbar">
+  <span class="tb-logo">ZMK</span>
+  <span class="tb-slash">/</span>
+  <span class="tb-sub">Theme Editor</span>
+  <span class="tb-ver">v2.0</span>
+  <div class="ws-chip">
+    <div class="ws-dot" id="ws-dot"></div>
+    <span id="ws-label">disconnected</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════ LAYOUT ════════════════════════ -->
+<div class="layout">
+
+  <!-- ─── SIDEBAR ─────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sb-section">
+      <div class="sb-head"><span class="sb-title">Built-in</span></div>
+      <div id="list-color"></div>
+      <div class="sb-head" style="padding-top:6px"><span class="sb-title">Animated</span></div>
+      <div id="list-animated"></div>
+    </div>
+    <div class="sb-section">
+      <div class="sb-head">
+        <span class="sb-title">My Themes</span>
+        <button class="btn-new" id="btn-new" title="New theme">+</button>
+      </div>
+      <div id="list-custom"></div>
+      <div id="sb-empty" class="sb-empty">No themes — click + to create</div>
+    </div>
+  </aside>
+
+  <!-- ─── EDITOR AREA ──────────────────────────────────── -->
+  <div class="editor-area">
+
+    <!-- header -->
+    <div class="ed-hdr">
+      <input type="text" id="theme-name" class="theme-name-input" placeholder="Theme name…" maxlength="32" readonly>
+      <div class="dirty-dot" id="dirty-dot" title="Unsaved changes"></div>
+      <div class="ed-actions">
+        <span class="toast" id="toast"></span>
+        <button class="btn btn-ghost" id="btn-copy">{ } JSON</button>
+        <button class="btn btn-primary" id="btn-save">Save theme</button>
+      </div>
+    </div>
+
+    <!-- body -->
+    <div class="ed-body">
+
+      <!-- controls -->
+      <div class="ctrl-col">
+
+        <div class="cs">
+          <div class="cs-title">Key idle</div>
+          <div class="cr">
+            <label>Background</label>
+            <input type="color" id="c-key-bg">
+            <span class="hx" id="v-key-bg"></span>
+          </div>
+          <div class="cr">
+            <label>Border</label>
+            <input type="color" id="c-key-border">
+            <span class="hx" id="v-key-border"></span>
+          </div>
+          <div class="cr">
+            <label>Label</label>
+            <input type="color" id="c-key-label">
+            <span class="hx" id="v-key-label"></span>
+          </div>
+        </div>
+
+        <div class="cs">
+          <div class="cs-title">Layer colors <span>pressed glow</span></div>
+          <div class="layer-grid" id="layer-grid"></div>
+        </div>
+
+        <div class="cs">
+          <div class="cs-title">Animation</div>
+          <div class="cr">
+            <label>Effect</label>
+            <select id="sel-anim">
+              <option value="none">None</option>
+              <option value="glow-pulse">Glow Pulse</option>
+              <option value="rainbow">Rainbow</option>
+              <option value="breathe">Breathe</option>
+            </select>
+          </div>
+          <div class="cr">
+            <label>Speed</label>
+            <input type="range" id="r-speed" min="0.3" max="3" step="0.1">
+            <span class="rv" id="v-speed"></span>
+          </div>
+        </div>
+
+        <div class="cs">
+          <div class="cs-title">Trail</div>
+          <div class="cr">
+            <label>Duration</label>
+            <input type="range" id="r-trail" min="20" max="600" step="10">
+            <span class="rv" id="v-trail"></span>
+          </div>
+        </div>
+
+      </div><!-- /ctrl-col -->
+
+      <!-- preview -->
+      <div class="prev-col">
+        <div>
+          <div class="pv-title">Preview</div>
+          <div id="mini-kbd" class="mini-kbd"></div>
+        </div>
+        <div>
+          <div class="chips" id="pv-chips"></div>
+        </div>
+        <div class="samples">
+          <div class="sg">
+            <div class="sg-lbl">Pressed</div>
+            <div class="skeys" id="pv-pressed"></div>
+          </div>
+          <div class="sg">
+            <div class="sg-lbl">Idle</div>
+            <div class="skeys" id="pv-idle"></div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /ed-body -->
+  </div><!-- /editor-area -->
+</div><!-- /layout -->
+
+<!-- ══════════════ SAVE-AS DIALOG ══════════════ -->
+<div class="dlg-overlay" id="dlg-saveas">
+  <div class="dlg">
+    <div class="dlg-title">Save as new theme</div>
+    <input type="text" id="dlg-saveas-name" placeholder="Theme name…" maxlength="32">
+    <div class="dlg-actions">
+      <button class="btn btn-ghost" id="dlg-saveas-cancel">Cancel</button>
+      <button class="btn btn-primary" id="dlg-saveas-ok">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ RENAME DIALOG ══════════════ -->
+<div class="dlg-overlay" id="dlg-rename">
+  <div class="dlg">
+    <div class="dlg-title">Rename theme</div>
+    <input type="text" id="dlg-rename-name" placeholder="New name…" maxlength="32">
+    <div class="dlg-actions">
+      <button class="btn btn-ghost" id="dlg-rename-cancel">Cancel</button>
+      <button class="btn btn-primary" id="dlg-rename-ok">Rename</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  DATA
+// ═══════════════════════════════════════════════════════════
+const LAYER_NAMES = ['BASE','LOWER','RAISE','ADJUST','RGB','STENO'];
+
+const BUILTIN = [
+  { id:'cyberpunk',  name:'Cyberpunk',   group:'color',
+    keyBg:'#120c22', keyBorder:'#4b376e', keyLabel:'#aa91d2',
+    layers:['#9933ff','#22dd66','#3366ff','#ff6600','#ff33ff','#888888'],
+    trailMs:80, animation:'none', animationSpeed:1 },
+  { id:'ocean',      name:'Ocean Deep',  group:'color',
+    keyBg:'#081828', keyBorder:'#1a3a5c', keyLabel:'#4477aa',
+    layers:['#00ccff','#00ff88','#3388ff','#ff6644','#cc44ff','#668899'],
+    trailMs:100, animation:'none', animationSpeed:1 },
+  { id:'dracula',    name:'Dracula',     group:'color',
+    keyBg:'#282a36', keyBorder:'#44475a', keyLabel:'#6272a4',
+    layers:['#bd93f9','#50fa7b','#8be9fd','#ffb86c','#ff79c6','#f8f8f2'],
+    trailMs:90,  animation:'none', animationSpeed:1 },
+  { id:'nord',       name:'Nord',        group:'color',
+    keyBg:'#2e3440', keyBorder:'#3b4252', keyLabel:'#616e88',
+    layers:['#88c0d0','#a3be8c','#81a1c1','#d08770','#b48ead','#d8dee9'],
+    trailMs:100, animation:'none', animationSpeed:1 },
+  { id:'sunset',     name:'Sunset',      group:'color',
+    keyBg:'#1a0f0a', keyBorder:'#5c3520', keyLabel:'#aa7755',
+    layers:['#ff6633','#ffcc00','#ff3366','#ff9900','#cc33ff','#886644'],
+    trailMs:80,  animation:'none', animationSpeed:1 },
+  { id:'matrix',     name:'Matrix',      group:'color',
+    keyBg:'#020802', keyBorder:'#0a3a0a', keyLabel:'#1a551a',
+    layers:['#00ff41','#00cc33','#33ff66','#66ff99','#00ff00','#338833'],
+    trailMs:60,  animation:'none', animationSpeed:1 },
+  { id:'sakura',     name:'Sakura',      group:'color',
+    keyBg:'#1a0a14', keyBorder:'#5c2040', keyLabel:'#aa5577',
+    layers:['#ff69b4','#ff1493','#db7093','#ff6eb4','#c71585','#997788'],
+    trailMs:120, animation:'none', animationSpeed:1 },
+  { id:'mono',       name:'Mono',        group:'color',
+    keyBg:'#111111', keyBorder:'#2a2a2a', keyLabel:'#484848',
+    layers:['#ffffff','#cccccc','#aaaaaa','#888888','#bbbbbb','#666666'],
+    trailMs:80,  animation:'none', animationSpeed:1 },
+  { id:'neon-pulse', name:'Neon Pulse',  group:'animated',
+    keyBg:'#08001a', keyBorder:'#3a1a5e', keyLabel:'#7744bb',
+    layers:['#ff00ff','#00ffff','#ffff00','#ff4400','#00ff88','#8888ff'],
+    trailMs:140, animation:'glow-pulse', animationSpeed:1 },
+  { id:'rainbow',    name:'Rainbow',     group:'animated',
+    keyBg:'#0a0a18', keyBorder:'#2a2a44', keyLabel:'#5566aa',
+    layers:['#ff3333','#ff8800','#ffee00','#33ff66','#3388ff','#aa44ff'],
+    trailMs:160, animation:'rainbow', animationSpeed:1 },
+  { id:'breathing',  name:'Breathing',   group:'animated',
+    keyBg:'#1a1e2e', keyBorder:'#2e3440', keyLabel:'#4c566a',
+    layers:['#88c0d0','#a3be8c','#81a1c1','#d08770','#b48ead','#eceff4'],
+    trailMs:250, animation:'breathe', animationSpeed:.8 },
+];
+
+// ═══════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════
+let theme   = {};           // current editing values
+let activeId = null;        // id of loaded theme
+let isDirty  = false;       // modified since last save?
+let customThemes = [];      // user-created themes
+
+// ═══════════════════════════════════════════════════════════
+//  PERSISTENCE
+// ═══════════════════════════════════════════════════════════
+function loadCustomThemes() {
+  try { return JSON.parse(localStorage.getItem('zmk-custom-themes') ?? '[]'); }
+  catch { return []; }
+}
+function saveCustomThemes() {
+  localStorage.setItem('zmk-custom-themes', JSON.stringify(customThemes));
+}
+function loadActiveId() {
+  return localStorage.getItem('zmk-active-theme-id') ?? 'cyberpunk';
+}
+function saveActiveId(id) {
+  localStorage.setItem('zmk-active-theme-id', id ?? '');
+}
+function loadSavedTheme() {
+  try { return JSON.parse(localStorage.getItem('zmk-widget-theme') ?? 'null'); }
+  catch { return null; }
+}
+function persistWidgetTheme(t) {
+  localStorage.setItem('zmk-widget-theme', JSON.stringify(t));
+}
+
+// ═══════════════════════════════════════════════════════════
+//  COLOR UTILS
+// ═══════════════════════════════════════════════════════════
+function hexToRgb(hex) {
+  const n = parseInt(hex.replace('#',''), 16);
+  return [(n>>16)&255, (n>>8)&255, n&255];
+}
+function hexToRgba(hex, a) {
+  const [r,g,b] = hexToRgb(hex);
+  return `rgba(${r},${g},${b},${a})`;
+}
+function colorToHex(s) {
+  if (!s) return '#888888';
+  if (s.startsWith('#')) return s.slice(0,7);
+  const m = s.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  if (m) return '#'+[+m[1],+m[2],+m[3]].map(x=>x.toString(16).padStart(2,'0')).join('');
+  return '#888888';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  THEME OBJ
+// ═══════════════════════════════════════════════════════════
+function cloneTheme(src) {
+  return {
+    layers:         [...(src.layers ?? BUILTIN[0].layers)],
+    keyBg:          colorToHex(src.keyBg   ?? BUILTIN[0].keyBg),
+    keyBorder:      colorToHex(src.keyBorder ?? BUILTIN[0].keyBorder),
+    keyLabel:       colorToHex(src.keyLabel ?? BUILTIN[0].keyLabel),
+    trailMs:        src.trailMs ?? 80,
+    animation:      src.animation ?? 'none',
+    animationSpeed: src.animationSpeed ?? 1,
+  };
+}
+function themeForWidget(t) {
+  return { ...t, keyLabel: hexToRgba(t.keyLabel, 0.6) };
+}
+function findById(id) {
+  return BUILTIN.find(p=>p.id===id) ?? customThemes.find(p=>p.id===id) ?? null;
+}
+function isBuiltinId(id) { return BUILTIN.some(p=>p.id===id); }
+
+// ═══════════════════════════════════════════════════════════
+//  LOAD A THEME INTO EDITOR
+// ═══════════════════════════════════════════════════════════
+function loadThemeById(id) {
+  const preset = findById(id);
+  if (!preset) return;
+  theme = cloneTheme(preset);
+  activeId = id;
+  isDirty = false;
+
+  const nameEl = document.getElementById('theme-name');
+  nameEl.value = preset.name;
+  nameEl.readOnly = isBuiltinId(id);
+
+  document.getElementById('dirty-dot').classList.remove('show');
+  saveActiveId(id);
+  syncControls();
+  updatePreview();
+  sendLive();
+  highlightSidebar();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MARK DIRTY (called on every edit)
+// ═══════════════════════════════════════════════════════════
+function markDirty() {
+  isDirty = true;
+  document.getElementById('dirty-dot').classList.add('show');
+}
+function clearDirty() {
+  isDirty = false;
+  document.getElementById('dirty-dot').classList.remove('show');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SAVE THEME
+// ═══════════════════════════════════════════════════════════
+function saveTheme() {
+  if (isBuiltinId(activeId)) {
+    // Built-in → must save as new custom
+    const dlg = document.getElementById('dlg-saveas');
+    const inp = document.getElementById('dlg-saveas-name');
+    inp.value = document.getElementById('theme-name').value || '';
+    dlg.classList.add('open');
+    setTimeout(() => { inp.focus(); inp.select(); }, 50);
+  } else {
+    // Custom → overwrite
+    const name = document.getElementById('theme-name').value.trim() ||
+                 findById(activeId)?.name || 'My Theme';
+    const newId = activeId; // keep same id
+    customThemes = customThemes.map(t =>
+      t.id === activeId
+        ? { ...t, name, ...cloneTheme(theme) }
+        : t
+    );
+    saveCustomThemes();
+    persistWidgetTheme(themeForWidget(theme));
+    sendLive();
+    clearDirty();
+    buildSidebar();
+    toast('Saved!');
+  }
+}
+
+// ── Save-as dialog ──────────────────────────────────────────
+const dlgSaveas = document.getElementById('dlg-saveas');
+const dlgSaveasInp = document.getElementById('dlg-saveas-name');
+
+document.getElementById('dlg-saveas-ok').addEventListener('click', () => {
+  const name = dlgSaveasInp.value.trim();
+  if (!name) return;
+  const newId = 'custom-' + name.toLowerCase().replace(/\s+/g,'-') + '-' + Date.now();
+  customThemes.push({ id: newId, name, group:'custom', ...cloneTheme(theme) });
+  saveCustomThemes();
+  persistWidgetTheme(themeForWidget(theme));
+  saveActiveId(newId);
+  activeId = newId;
+  document.getElementById('theme-name').readOnly = false;
+  sendLive();
+  clearDirty();
+  buildSidebar();
+  highlightSidebar();
+  dlgSaveas.classList.remove('open');
+  toast(`Saved as "${name}"`);
+});
+document.getElementById('dlg-saveas-cancel').addEventListener('click', () => dlgSaveas.classList.remove('open'));
+dlgSaveas.addEventListener('click', e => { if (e.target===dlgSaveas) dlgSaveas.classList.remove('open'); });
+dlgSaveasInp.addEventListener('keydown', e => {
+  if (e.key==='Enter') document.getElementById('dlg-saveas-ok').click();
+  if (e.key==='Escape') dlgSaveas.classList.remove('open');
+});
+
+// ── Rename dialog ───────────────────────────────────────────
+const dlgRename = document.getElementById('dlg-rename');
+const dlgRenameInp = document.getElementById('dlg-rename-name');
+let _renameId = null;
+
+function openRenameDialog(id) {
+  _renameId = id;
+  dlgRenameInp.value = findById(id)?.name ?? '';
+  dlgRename.classList.add('open');
+  setTimeout(() => { dlgRenameInp.focus(); dlgRenameInp.select(); }, 50);
+}
+document.getElementById('dlg-rename-ok').addEventListener('click', () => {
+  const name = dlgRenameInp.value.trim();
+  if (!name || !_renameId) return;
+  customThemes = customThemes.map(t => t.id===_renameId ? {...t, name} : t);
+  saveCustomThemes();
+  if (activeId===_renameId) document.getElementById('theme-name').value = name;
+  buildSidebar();
+  dlgRename.classList.remove('open');
+  toast('Renamed');
+});
+document.getElementById('dlg-rename-cancel').addEventListener('click', () => dlgRename.classList.remove('open'));
+dlgRename.addEventListener('click', e => { if (e.target===dlgRename) dlgRename.classList.remove('open'); });
+dlgRenameInp.addEventListener('keydown', e => {
+  if (e.key==='Enter') document.getElementById('dlg-rename-ok').click();
+  if (e.key==='Escape') dlgRename.classList.remove('open');
+});
+
+// ═══════════════════════════════════════════════════════════
+//  SIDEBAR
+// ═══════════════════════════════════════════════════════════
+function buildThemeItem(preset, container, isCustom=false) {
+  const el = document.createElement('div');
+  el.className = 'theme-item';
+  el.dataset.id = preset.id;
+
+  const dots = document.createElement('div');
+  dots.className = 'ti-dots';
+  preset.layers.slice(0,4).forEach(c => {
+    const d = document.createElement('div');
+    d.className = 'ti-dot';
+    d.style.background = c;
+    dots.appendChild(d);
+  });
+  el.appendChild(dots);
+
+  const name = document.createElement('div');
+  name.className = 'ti-name';
+  name.textContent = preset.name;
+  el.appendChild(name);
+
+  if (preset.animation && preset.animation !== 'none') {
+    const badge = document.createElement('div');
+    badge.className = 'ti-badge';
+    badge.textContent = preset.animation==='glow-pulse' ? 'PULSE' :
+                        preset.animation==='rainbow'    ? 'RGB'   : 'BRE';
+    el.appendChild(badge);
+  }
+
+  if (isCustom) {
+    const del = document.createElement('button');
+    del.className = 'ti-del';
+    del.innerHTML = '&times;';
+    del.title = 'Delete';
+    del.addEventListener('click', e => {
+      e.stopPropagation();
+      if (!confirm(`Delete "${preset.name}"?`)) return;
+      customThemes = customThemes.filter(t => t.id !== preset.id);
+      saveCustomThemes();
+      if (activeId === preset.id) {
+        loadThemeById('cyberpunk');
+      }
+      buildSidebar();
+    });
+    el.appendChild(del);
+
+    el.addEventListener('dblclick', e => {
+      e.stopPropagation();
+      openRenameDialog(preset.id);
+    });
+  }
+
+  el.addEventListener('click', () => loadThemeById(preset.id));
+  container.appendChild(el);
+}
+
+function buildSidebar() {
+  const colorEl   = document.getElementById('list-color');
+  const animEl    = document.getElementById('list-animated');
+  const custEl    = document.getElementById('list-custom');
+  const emptyEl   = document.getElementById('sb-empty');
+
+  colorEl.innerHTML = ''; animEl.innerHTML = ''; custEl.innerHTML = '';
+
+  BUILTIN.filter(p=>p.group==='color').forEach(p => buildThemeItem(p, colorEl));
+  BUILTIN.filter(p=>p.group==='animated').forEach(p => buildThemeItem(p, animEl));
+
+  emptyEl.style.display = customThemes.length ? 'none' : '';
+  customThemes.forEach(p => buildThemeItem(p, custEl, true));
+
+  highlightSidebar();
+}
+
+function highlightSidebar() {
+  document.querySelectorAll('.theme-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.id === activeId);
+  });
+}
+
+// ── New theme button ──────────────────────────────────────
+document.getElementById('btn-new').addEventListener('click', () => {
+  const num   = customThemes.length + 1;
+  const name  = `My Theme ${num}`;
+  const newId = 'custom-' + Date.now();
+  const base  = findById(activeId) ?? BUILTIN[0];
+  customThemes.push({ id: newId, name, group:'custom', ...cloneTheme(base) });
+  saveCustomThemes();
+  buildSidebar();
+  loadThemeById(newId);
+});
+
+// ═══════════════════════════════════════════════════════════
+//  CONTROLS — BIND
+// ═══════════════════════════════════════════════════════════
+function onChange() {
+  markDirty();
+  updatePreview();
+  sendLive();
+}
+
+function bindColor(inputId, valId, key) {
+  const inp = document.getElementById(inputId);
+  const val = document.getElementById(valId);
+  inp.value   = colorToHex(theme[key]);
+  val.textContent = colorToHex(theme[key]);
+  inp.oninput = e => {
+    theme[key] = e.target.value;
+    val.textContent = e.target.value;
+    onChange();
+  };
+}
+
+function syncControls() {
+  bindColor('c-key-bg',     'v-key-bg',     'keyBg');
+  bindColor('c-key-border', 'v-key-border', 'keyBorder');
+  bindColor('c-key-label',  'v-key-label',  'keyLabel');
+
+  buildLayerGrid();
+
+  const speed = document.getElementById('r-speed');
+  const speedV = document.getElementById('v-speed');
+  speed.value = theme.animationSpeed;
+  speedV.textContent = (+theme.animationSpeed).toFixed(1) + 'x';
+  speed.oninput = e => {
+    theme.animationSpeed = +e.target.value;
+    speedV.textContent = (+e.target.value).toFixed(1) + 'x';
+    onChange();
+  };
+
+  const trail = document.getElementById('r-trail');
+  const trailV = document.getElementById('v-trail');
+  trail.value = theme.trailMs;
+  trailV.textContent = theme.trailMs + ' ms';
+  trail.oninput = e => {
+    theme.trailMs = +e.target.value;
+    trailV.textContent = +e.target.value + ' ms';
+    onChange();
+  };
+
+  document.getElementById('sel-anim').value = theme.animation;
+}
+
+function buildLayerGrid() {
+  const grid = document.getElementById('layer-grid');
+  grid.innerHTML = '';
+  LAYER_NAMES.forEach((name, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'lc';
+    cell.innerHTML = `
+      <label>${name}</label>
+      <input type="color" id="lc-${i}" value="${theme.layers[i]}">
+      <span class="hx" id="lh-${i}">${theme.layers[i]}</span>`;
+    grid.appendChild(cell);
+    cell.querySelector(`#lc-${i}`).addEventListener('input', e => {
+      theme.layers[i] = e.target.value;
+      document.getElementById(`lh-${i}`).textContent = e.target.value;
+      onChange();
+    });
+  });
+}
+
+document.getElementById('sel-anim').addEventListener('change', e => {
+  theme.animation = e.target.value;
+  onChange();
+});
+
+// Theme name field (only for custom)
+document.getElementById('theme-name').addEventListener('input', () => {
+  if (!isBuiltinId(activeId)) markDirty();
+});
+
+// ═══════════════════════════════════════════════════════════
+//  MINI KEYBOARD
+// ═══════════════════════════════════════════════════════════
+// [code, label] pairs — code matches obs-widget.html physical layout
+const MK_LEFT_ROWS = [
+  [['Tab','TAB'],['KeyQ','Q'],['KeyW','W'],['KeyE','E'],['KeyR','R'],['KeyT','T']],
+  [['ShiftLeft','SHF'],['KeyA','A'],['KeyS','S'],['KeyD','D'],['KeyF','F'],['KeyG','G']],
+  [['ControlLeft','CTL'],['KeyZ','Z'],['KeyX','X'],['KeyC','C'],['KeyV','V'],['KeyB','B']],
+];
+const MK_LEFT_THUMB  = [['MetaLeft','GUI'],['__MO1__','▼'],['Space','SPC']];
+const MK_RIGHT_ROWS = [
+  [['KeyY','Y'],['KeyU','U'],['KeyI','I'],['KeyO','O'],['KeyP','P'],['Backspace','BSP']],
+  [['KeyH','H'],['KeyJ','J'],['KeyK','K'],['KeyL','L'],['Semicolon',';'],['Quote',"'"]],
+  [['KeyN','N'],['KeyM','M'],['Comma',','],['Period','.'],['Slash','/'],['Escape','ESC']],
+];
+const MK_RIGHT_THUMB = [['Enter','RET'],['__MO2__','▼'],['AltRight','ALT']];
+
+const MOUSE_TO_POS = {
+  BtnLeft:'KeyY', BtnRight:'KeyU', BtnMiddle:'KeyI', BtnSide:'KeyO', BtnExtra:'KeyP',
+};
+const MOUSE_MOVE_TO_POS = {
+  MouseLeft:'KeyH', MouseRight:'KeyL', MouseUp:'KeyK', MouseDown:'KeyJ',
+};
+const LAYER_REMAP = {
+  1: { Digit1:'KeyQ',Digit2:'KeyW',Digit3:'KeyE',Digit4:'KeyR',Digit5:'KeyT',
+       Digit6:'KeyY',Digit7:'KeyU',Digit8:'KeyI',Digit9:'KeyO',Digit0:'KeyP',
+       ArrowLeft:'KeyH',ArrowDown:'KeyJ',ArrowUp:'KeyK',ArrowRight:'KeyL' },
+  3: { F1:'ShiftLeft',F2:'KeyA',F3:'KeyS',F4:'KeyD',F5:'KeyF',F6:'KeyG',
+       F7:'ControlLeft',F8:'KeyZ',F9:'KeyX',F10:'KeyC',F11:'KeyV',F12:'KeyB' },
+};
+
+// key press state
+let currentLayer    = 0;
+let layerLingerTimer = null;
+let LAYER_COLOR      = {};
+const heldCodes      = new Set();
+const litElements    = {};
+const trailTimers    = {};
+let mkElements       = {}; // code → .mk DOM element
+
+function computeLayerColor() {
+  LAYER_COLOR = {};
+  theme.layers.forEach((hex, i) => {
+    const [r,g,b] = hexToRgb(hex);
+    LAYER_COLOR[i] = {
+      bg:     `rgba(${r},${g},${b},.22)`,
+      border: `rgba(${r},${g},${b},.9)`,
+      glow:   `rgba(${r},${g},${b},.5)`,
+    };
+  });
+}
+
+function detectLayer(code) {
+  if (/^Digit[0-9]$/.test(code)) return 1;
+  if (/^Arrow/.test(code)) return 1;
+  if (/^F([1-9]|1[0-2])$/.test(code)) return 3;
+  if (MOUSE_TO_POS[code]) return 3;
+  if (MOUSE_MOVE_TO_POS[code]) return 3;
+  return 0;
+}
+
+function resolvePos(code) {
+  if (MOUSE_TO_POS[code]) return MOUSE_TO_POS[code];
+  if (MOUSE_MOVE_TO_POS[code]) return MOUSE_MOVE_TO_POS[code];
+  if (/^Digit[0-9]$/.test(code) || /^Arrow/.test(code)) return LAYER_REMAP[1][code] ?? code;
+  return (LAYER_REMAP[currentLayer]?.[code]) ?? code;
+}
+
+function setLayer(l) {
+  if (currentLayer === l) return;
+  currentLayer = l;
+  document.querySelectorAll('#pv-chips .chip').forEach(c =>
+    c.classList.toggle('active', +c.dataset.l === l));
+  const mo1 = mkElements['__MO1__'];
+  const mo2 = mkElements['__MO2__'];
+  [['__MO1__', l===1||l===3], ['__MO2__', l===2||l===3]].forEach(([code, on]) => {
+    const el = mkElements[code]; if (!el) return;
+    if (on) {
+      const c = LAYER_COLOR[l] ?? LAYER_COLOR[0] ?? {};
+      el.style.background  = c.bg  ?? '';
+      el.style.borderColor = c.border ?? '';
+      el.style.boxShadow   = `0 0 5px ${c.glow ?? 'transparent'}`;
+    } else {
+      el.style.background = el.style.borderColor = el.style.boxShadow = '';
+    }
+  });
+}
+
+function pressKey(code) {
+  const pos = resolvePos(code);
+  const el  = mkElements[pos] ?? mkElements[code];
+  if (!el) return;
+  const tk = pos in mkElements ? pos : code;
+  if (trailTimers[tk]) { clearTimeout(trailTimers[tk]); delete trailTimers[tk]; }
+  const c = LAYER_COLOR[currentLayer] ?? LAYER_COLOR[0] ?? {};
+  el.style.background  = c.bg     ?? '';
+  el.style.borderColor = c.border ?? '';
+  el.style.boxShadow   = `0 0 6px ${c.glow ?? 'transparent'}, 0 0 12px ${c.glow ?? 'transparent'}`;
+  litElements[code] = { el, tk };
+}
+
+function releaseKey(code) {
+  const entry = litElements[code]; delete litElements[code];
+  if (!entry) return;
+  const { el, tk } = entry;
+  const ms = theme.trailMs ?? 80;
+  trailTimers[tk] = setTimeout(() => {
+    el.style.background = el.style.borderColor = el.style.boxShadow = '';
+    delete trailTimers[tk];
+  }, ms);
+}
+
+function clearAllKeys() {
+  heldCodes.clear();
+  for (const code of Object.keys(litElements)) releaseKey(code);
+  for (const [tk, t] of Object.entries(trailTimers)) { clearTimeout(t); delete trailTimers[tk]; }
+  for (const el of Object.values(mkElements)) {
+    el.style.background = el.style.borderColor = el.style.boxShadow = '';
+  }
+}
+
+let mkeyEls = []; // all .mk elements (for theme color updates)
+
+function buildMiniKbd() {
+  const kbd = document.getElementById('mini-kbd');
+  kbd.innerHTML = '';
+  mkeyEls = [];
+  mkElements = {};
+
+  function makeKey(code, lbl, isMO=false) {
+    const k = document.createElement('div');
+    k.className = 'mk' + (isMO ? ' mo' : '');
+    k.textContent = lbl.slice(0,3);
+    mkeyEls.push(k);
+    if (code) mkElements[code] = k;
+    return k;
+  }
+
+  function half(rows, thumbs, isRight) {
+    const h = document.createElement('div');
+    h.className = 'mini-half';
+    rows.forEach(row => {
+      const r = document.createElement('div');
+      r.className = 'mrow';
+      row.forEach(([code,lbl]) => r.appendChild(makeKey(code,lbl)));
+      h.appendChild(r);
+    });
+    const tr = document.createElement('div');
+    tr.className = 'mrow ' + (isRight ? 'tr' : 'tl');
+    thumbs.forEach(([code,lbl]) => tr.appendChild(makeKey(code, lbl, code.startsWith('__MO'))));
+    h.appendChild(tr);
+    return h;
+  }
+
+  kbd.appendChild(half(MK_LEFT_ROWS,  MK_LEFT_THUMB,  false));
+  kbd.appendChild(half(MK_RIGHT_ROWS, MK_RIGHT_THUMB, true));
+}
+
+function updateMiniKbd() {
+  const bg  = theme.keyBg;
+  const bd  = colorToHex(theme.keyBorder) + '80';
+  const lbl = colorToHex(theme.keyLabel) + '99';
+  mkeyEls.forEach(k => {
+    // only reset keys that aren't currently lit by a key press
+    if (!k.style.boxShadow) {
+      k.style.background  = bg;
+      k.style.borderColor = bd;
+    }
+    k.style.color = lbl;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PREVIEW
+// ═══════════════════════════════════════════════════════════
+const SAMPLE = ['Q','W','E','R','T','Y'];
+
+function animCss(anim, speed) {
+  if (anim === 'none') return '';
+  const dur = { 'glow-pulse':1.5, 'rainbow':3, 'breathe':2 }[anim] ?? 2;
+  const s = dur / (speed||1);
+  const n = anim==='glow-pulse' ? 'glow-pulse' : anim==='rainbow' ? 'rainbow-hue' : 'breathe';
+  return `animation:${n} ${s.toFixed(2)}s ease-in-out infinite;`;
+}
+
+function updatePreview() {
+  computeLayerColor();
+  updateMiniKbd();
+
+  // layer chips
+  const chips = document.getElementById('pv-chips');
+  chips.innerHTML = '';
+  LAYER_NAMES.forEach((name, i) => {
+    const c = document.createElement('div');
+    c.className = 'chip' + (i === currentLayer ? ' active' : '');
+    c.dataset.l = i;
+    c.textContent = name;
+    c.style.color = theme.layers[i];
+    chips.appendChild(c);
+  });
+
+  // pressed keys
+  const pressed = document.getElementById('pv-pressed');
+  pressed.innerHTML = '';
+  const anim = animCss(theme.animation, theme.animationSpeed);
+  LAYER_NAMES.forEach((name, i) => {
+    const [r,g,b] = hexToRgb(theme.layers[i]);
+    const k = document.createElement('div');
+    k.className = 'sk';
+    k.textContent = SAMPLE[i] ?? name.slice(0,2);
+    k.style.cssText = `
+      background:rgba(${r},${g},${b},.22);
+      border-color:rgba(${r},${g},${b},.9);
+      box-shadow:0 0 7px rgba(${r},${g},${b},.5),0 0 16px rgba(${r},${g},${b},.3);
+      color:#fff; ${anim}`;
+    pressed.appendChild(k);
+  });
+
+  // idle keys
+  const idle = document.getElementById('pv-idle');
+  idle.innerHTML = '';
+  for (let i=0; i<6; i++) {
+    const k = document.createElement('div');
+    k.className = 'sk';
+    k.textContent = SAMPLE[i];
+    k.style.cssText = `
+      background:${colorToHex(theme.keyBg)}e6;
+      border-color:${colorToHex(theme.keyBorder)}80;
+      color:${colorToHex(theme.keyLabel)}99;`;
+    idle.appendChild(k);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ACTIONS
+// ═══════════════════════════════════════════════════════════
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+document.getElementById('btn-save').addEventListener('click', saveTheme);
+
+document.getElementById('btn-copy').addEventListener('click', () => {
+  navigator.clipboard.writeText(JSON.stringify(themeForWidget(theme), null, 2))
+    .then(() => toast('JSON copied!'));
+});
+
+// ═══════════════════════════════════════════════════════════
+//  WEBSOCKET
+// ═══════════════════════════════════════════════════════════
+let ws;
+const wsDot   = document.getElementById('ws-dot');
+const wsLabel = document.getElementById('ws-label');
+
+function connectWS() {
+  ws = new WebSocket('ws://localhost:8765');
+  ws.onopen  = () => { wsDot.classList.add('ok'); wsLabel.textContent = 'bridge connected'; clearAllKeys(); };
+  ws.onclose = () => { wsDot.classList.remove('ok'); wsLabel.textContent = 'disconnected'; clearAllKeys(); setTimeout(connectWS, 2000); };
+
+  ws.onmessage = ({ data }) => {
+    let msg; try { msg = JSON.parse(data); } catch { return; }
+
+    // ignore our own theme updates being echoed back
+    if (msg.type === 'UPDATE_THEME') return;
+
+    if (msg.type === 'layout') return; // layout doesn't affect key display here
+
+    if (msg.type === 'mouse_move') {
+      setLayer(3);
+      clearTimeout(layerLingerTimer);
+      layerLingerTimer = setTimeout(() => { setLayer(0); layerLingerTimer = null; }, 800);
+      return;
+    }
+
+    const code = msg.code;
+    if (!code) return;
+
+    if (msg.type === 'cancel') {
+      heldCodes.delete(code); releaseKey(code); return;
+    }
+
+    if (msg.type === 'keydown') {
+      if (heldCodes.has(code)) return;
+      heldCodes.add(code);
+      clearTimeout(layerLingerTimer); layerLingerTimer = null;
+
+      let layer = detectLayer(code);
+
+      // phantom-shift fallback (same logic as widget)
+      if (msg.layer === 'raise') layer = 2;
+      if (layer === 1 && /^Digit[0-9]$/.test(code) && !msg.layer &&
+          (heldCodes.has('ShiftLeft') || heldCodes.has('ShiftRight'))) {
+        layer = 2;
+        for (const sh of ['ShiftLeft','ShiftRight'])
+          if (heldCodes.has(sh)) { heldCodes.delete(sh); releaseKey(sh); }
+      }
+
+      setLayer(layer);
+      pressKey(code);
+      // sync chips active state
+      document.querySelectorAll('#pv-chips .chip').forEach(c =>
+        c.classList.toggle('active', +c.dataset.l === currentLayer));
+
+    } else if (msg.type === 'keyup') {
+      heldCodes.delete(code);
+      releaseKey(code);
+      if (heldCodes.size === 0 && currentLayer !== 0) {
+        clearTimeout(layerLingerTimer);
+        layerLingerTimer = setTimeout(() => {
+          setLayer(0);
+          document.querySelectorAll('#pv-chips .chip').forEach(c =>
+            c.classList.toggle('active', +c.dataset.l === 0));
+          layerLingerTimer = null;
+        }, 800);
+      }
+    }
+  };
+}
+
+function sendLive() {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'UPDATE_THEME', theme: themeForWidget(theme) }));
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════
+customThemes = loadCustomThemes();
+buildSidebar();
+buildMiniKbd();
+
+// Restore last active theme
+const savedId = loadActiveId();
+const startPreset = findById(savedId) ?? BUILTIN[0];
+theme    = cloneTheme(startPreset);
+activeId = startPreset.id;
+
+// If widget-theme was saved (e.g. by bridge pushing it), prefer those values
+const saved = loadSavedTheme();
+if (saved && !savedId) {
+  theme = cloneTheme(saved);
+}
+
+const nameEl = document.getElementById('theme-name');
+nameEl.value = startPreset.name;
+nameEl.readOnly = isBuiltinId(activeId);
+
+highlightSidebar();
+syncControls();
+updatePreview();
+connectWS();
+</script>
+</body>
+</html>

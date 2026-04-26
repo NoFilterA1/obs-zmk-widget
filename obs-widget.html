@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Corne Widget</title>
+<style>
+:root {
+  --key-bg:     #120c22;
+  --key-border: #4b376e;
+  --key-label:  rgba(170,145,210,0.6);
+  --layer-0: #9933ff; --layer-1: #22dd66; --layer-2: #3366ff;
+  --layer-3: #ff6600; --layer-4: #ff33ff; --layer-5: #888888;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100vw; height: 100vh;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  user-select: none;
+  overflow: hidden;
+}
+
+#widget {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 18px 12px;
+  background: transparent;
+  border: none;
+}
+
+/* ── Layer chips ─────────────────────────────────────────────────────────── */
+#layer-bar { display: flex; gap: 5px; align-items: center; }
+
+.chip {
+  padding: 2px 9px;
+  border-radius: 20px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  border: 1px solid currentColor;
+  opacity: 0.22;
+  cursor: pointer;
+  transition: opacity 0.12s, box-shadow 0.12s;
+}
+.chip.active { opacity: 1; box-shadow: 0 0 7px currentColor, 0 0 14px currentColor; }
+.c0 { color: var(--layer-0); } .c1 { color: var(--layer-1); } .c2 { color: var(--layer-2); }
+.c3 { color: var(--layer-3); } .c4 { color: var(--layer-4); } .c5 { color: var(--layer-5); }
+
+#layout-btn {
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 9px; font-weight: 700; letter-spacing: 1px;
+  border: 1px solid rgba(255,200,80,0.45);
+  color: rgba(255,200,80,0.5);
+  cursor: pointer;
+  transition: color .15s, border-color .15s, box-shadow .15s;
+  margin-left: 4px;
+}
+#layout-btn.colemak {
+  color: #ffcc44;
+  border-color: #ffcc44;
+  box-shadow: 0 0 6px #ffcc4488;
+}
+#layout-btn.russian {
+  color: #44ccff;
+  border-color: #44ccff;
+  box-shadow: 0 0 6px #44ccff88;
+}
+
+#status {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #ff3333;
+  transition: background .3s;
+  flex-shrink: 0;
+  margin-left: 6px;
+}
+#status.ok { background: #33ff66; box-shadow: 0 0 6px #33ff66; }
+
+/* ── Keyboard ────────────────────────────────────────────────────────────── */
+#keyboard { display: flex; gap: 18px; }
+.half { display: flex; flex-direction: column; gap: 3px; }
+.row  { display: flex; gap: 3px; }
+.left  .thumb-row { padding-left:  calc(2 * 45px); }
+.right .thumb-row { padding-right: calc(2 * 45px); }
+
+/* ── Keys ────────────────────────────────────────────────────────────────── */
+.key {
+  width: 42px; height: 38px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--key-bg) 90%, transparent);
+  border: 1px solid color-mix(in srgb, var(--key-border) 50%, transparent);
+  display: flex; align-items: center; justify-content: center;
+  transition: background .05s, border-color .05s, box-shadow .05s;
+  position: relative; overflow: hidden;
+}
+.key::after {
+  content: '';
+  position: absolute; inset: 0; border-radius: inherit;
+  background: radial-gradient(ellipse at 50% 0%, rgba(255,255,255,.05) 0%, transparent 70%);
+  pointer-events: none;
+}
+.key .lbl {
+  font-size: 10px; font-weight: 600;
+  color: var(--key-label);
+  transition: color .05s;
+}
+.key.mo   { border-style: dashed; }
+.key.dead { opacity: 0.15; }
+
+/* Trail decay after keyup */
+.key.trail {
+  transition: background .1s ease, border-color .1s ease, box-shadow .12s ease;
+}
+.key.trail .lbl { transition: color .1s ease; }
+
+/* ── Animations (applied to pressed keys based on theme) ──────────────── */
+@keyframes glow-pulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.6); }
+}
+@keyframes rainbow-hue {
+  from { filter: hue-rotate(0deg); }
+  to { filter: hue-rotate(360deg); }
+}
+@keyframes breathe {
+  0%, 100% { opacity: .55; }
+  50% { opacity: 1; }
+}
+.key.anim-glow-pulse { animation: glow-pulse var(--anim-dur, 1.5s) ease-in-out infinite; }
+.key.anim-rainbow    { animation: rainbow-hue var(--anim-dur, 3s) linear infinite; }
+.key.anim-breathe    { animation: breathe var(--anim-dur, 2s) ease-in-out infinite; }
+</style>
+</head>
+<body>
+<div id="widget">
+  <div id="layer-bar">
+    <div class="chip c0 active" data-l="0">BASE</div>
+    <div class="chip c1"       data-l="1">LOWER</div>
+    <div class="chip c2"       data-l="2">RAISE</div>
+    <div class="chip c3"       data-l="3">ADJUST</div>
+    <div class="chip c4"       data-l="4">RGB</div>
+    <div class="chip c5"       data-l="5">STENO</div>
+    <div id="layout-btn">QWR</div>
+    <div id="status"></div>
+  </div>
+  <div id="keyboard"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+//  PHYSICAL LAYOUT  (e.code for each position; null = MO/layer key)
+// ═══════════════════════════════════════════════════════════════════════════
+const LEFT_ROWS = [
+  ['Tab',         'KeyQ','KeyW','KeyE','KeyR','KeyT'],
+  ['ShiftLeft',   'KeyA','KeyS','KeyD','KeyF','KeyG'],
+  ['ControlLeft', 'KeyZ','KeyX','KeyC','KeyV','KeyB'],
+];
+const LEFT_THUMBS  = ['MetaLeft', '__MO1__', 'Space'];
+
+const RIGHT_ROWS = [
+  ['KeyY','KeyU','KeyI','KeyO','KeyP','Backspace'],
+  ['KeyH','KeyJ','KeyK','KeyL','Semicolon','Quote'],
+  ['KeyN','KeyM','Comma','Period','Slash','Escape'],
+];
+const RIGHT_THUMBS = ['Enter', '__MO2__', 'AltRight'];
+
+// ── Mouse button → corne physical position (adjust layer) ─────────────────
+const MOUSE_TO_POS = {
+  BtnLeft:   'KeyY',   // MB1
+  BtnRight:  'KeyU',   // MB2
+  BtnMiddle: 'KeyI',
+  BtnSide:   'KeyO',
+  BtnExtra:  'KeyP',
+};
+
+// ── Mouse movement direction → corne physical position (adjust layer) ──────
+const MOUSE_MOVE_TO_POS = {
+  MouseLeft:  'KeyH',
+  MouseRight: 'KeyL',
+  MouseUp:    'KeyK',
+  MouseDown:  'KeyJ',
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  LABELS per layer  { [e.code]: displayString }
+// ═══════════════════════════════════════════════════════════════════════════
+const BASE_QWERTY = {
+  Tab:'TAB', KeyQ:'Q', KeyW:'W', KeyE:'E', KeyR:'R', KeyT:'T',
+  ShiftLeft:'SHF', KeyA:'A', KeyS:'S', KeyD:'D', KeyF:'F', KeyG:'G',
+  ControlLeft:'CTL', KeyZ:'Z', KeyX:'X', KeyC:'C', KeyV:'V', KeyB:'B',
+  MetaLeft:'GUI', __MO1__:'LWR', Space:'SPC',
+  KeyY:'Y', KeyU:'U', KeyI:'I', KeyO:'O', KeyP:'P', Backspace:'BSP',
+  KeyH:'H', KeyJ:'J', KeyK:'K', KeyL:'L', Semicolon:';', Quote:"'",
+  KeyN:'N', KeyM:'M', Comma:',', Period:'.', Slash:'/', Escape:'ESC',
+  Enter:'RET', __MO2__:'RSE', AltRight:'ALT',
+};
+
+// Russian ЙЦУКЕН: physical QWERTY e.code → Russian character
+const BASE_RUSSIAN = {
+  Tab:'TAB', KeyQ:'Й', KeyW:'Ц', KeyE:'У', KeyR:'К', KeyT:'Е',
+  ShiftLeft:'SHF', KeyA:'Ф', KeyS:'Ы', KeyD:'В', KeyF:'А', KeyG:'П',
+  ControlLeft:'CTL', KeyZ:'Я', KeyX:'Ч', KeyC:'С', KeyV:'М', KeyB:'И',
+  MetaLeft:'GUI', __MO1__:'LWR', Space:'SPC',
+  KeyY:'Н', KeyU:'Г', KeyI:'Ш', KeyO:'Щ', KeyP:'З', Backspace:'BSP',
+  KeyH:'Р', KeyJ:'О', KeyK:'Л', KeyL:'Д', Semicolon:'Ж', Quote:'Э',
+  KeyN:'Т', KeyM:'Ь', Comma:'Б', Period:'Ю', Slash:'.', Escape:'ESC',
+  Enter:'RET', __MO2__:'RSE', AltRight:'ALT',
+};
+
+// Colemak-DH: physical QWERTY e.code → Colemak-DH character
+const BASE_COLEMAK = {
+  Tab:'TAB', KeyQ:'Q', KeyW:'W', KeyE:'F', KeyR:'P', KeyT:'B',
+  ShiftLeft:'SHF', KeyA:'A', KeyS:'R', KeyD:'S', KeyF:'T', KeyG:'G',
+  ControlLeft:'CTL', KeyZ:'Z', KeyX:'X', KeyC:'C', KeyV:'D', KeyB:'V',
+  MetaLeft:'GUI', __MO1__:'LWR', Space:'SPC',
+  KeyY:'J', KeyU:'L', KeyI:'U', KeyO:'Y', KeyP:';', Backspace:'BSP',
+  KeyH:'M', KeyJ:'N', KeyK:'E', KeyL:'I', Semicolon:'O', Quote:"'",
+  KeyN:'K', KeyM:'H', Comma:',', Period:'.', Slash:'/', Escape:'ESC',
+  Enter:'RET', __MO2__:'RSE', AltRight:'ALT',
+};
+
+const LAYER_LABELS = {
+  1: { // Lower
+    Tab:'TAB', KeyQ:'1', KeyW:'2', KeyE:'3', KeyR:'4', KeyT:'5',
+    ShiftLeft:'SHF', KeyA:'—', KeyS:'—', KeyD:'⏮', KeyF:'⏯', KeyG:'⏭',
+    ControlLeft:'CTL', KeyZ:'—', KeyX:'—', KeyC:'V−', KeyV:'MU', KeyB:'V+',
+    MetaLeft:'GUI', __MO1__:'▼', Space:'SPC',
+    KeyY:'6', KeyU:'7', KeyI:'8', KeyO:'9', KeyP:'0', Backspace:'BSP',
+    KeyH:'←', KeyJ:'↓', KeyK:'↑', KeyL:'→', Semicolon:'—', Quote:'—',
+    KeyN:'—', KeyM:'—', Comma:'—', Period:'—', Slash:'—', Escape:'—',
+    Enter:'RET', __MO2__:'▼', AltRight:'ALT',
+  },
+  2: { // Raise
+    Tab:'TAB', KeyQ:'!', KeyW:'@', KeyE:'#', KeyR:'$', KeyT:'%',
+    ShiftLeft:'SHF', KeyA:'—', KeyS:'—', KeyD:'—', KeyF:'—', KeyG:'—',
+    ControlLeft:'CTL', KeyZ:'—', KeyX:'—', KeyC:'BT<', KeyV:'CLR', KeyB:'BT>',
+    MetaLeft:'GUI', __MO1__:'▼', Space:'SPC',
+    KeyY:'^', KeyU:'&', KeyI:'*', KeyO:'(', KeyP:')', Backspace:'BSP',
+    KeyH:'−', KeyJ:'=', KeyK:'[', KeyL:']', Semicolon:'\\', Quote:'`',
+    KeyN:'_', KeyM:'+', Comma:'{', Period:'}', Slash:'|', Escape:'~',
+    Enter:'RET', __MO2__:'▼', AltRight:'ALT',
+  },
+  3: { // Adjust
+    Tab:'—', KeyQ:'—', KeyW:'—', KeyE:'—', KeyR:'RGB', KeyT:'L4',
+    ShiftLeft:'F1', KeyA:'F2', KeyS:'F3', KeyD:'F4', KeyF:'F5', KeyG:'F6',
+    ControlLeft:'F7', KeyZ:'F8', KeyX:'F9', KeyC:'F10', KeyV:'F11', KeyB:'F12',
+    MetaLeft:'GUI', __MO1__:'▼', Space:'SPC',
+    KeyY:'MB1', KeyU:'MB2', KeyI:'—', KeyO:'—', KeyP:'—', Backspace:'—',
+    KeyH:'M←', KeyJ:'M↓', KeyK:'M↑', KeyL:'M→', Semicolon:'—', Quote:'—',
+    KeyN:'—', KeyM:'SL↓', Comma:'SL↑', Period:'—', Slash:'—', Escape:'STU',
+    Enter:'RET', __MO2__:'▼', AltRight:'ALT',
+  },
+  5: { // Steno
+    Tab:'—', KeyQ:'S−', KeyW:'T−', KeyE:'P−', KeyR:'H−', KeyT:'*',
+    ShiftLeft:'—', KeyA:'S−', KeyS:'K−', KeyD:'W−', KeyF:'R−', KeyG:'*',
+    ControlLeft:'—', KeyZ:'—', KeyX:'—', KeyC:'—', KeyV:'—', KeyB:'—',
+    MetaLeft:'A−', __MO1__:'O−', Space:'—',
+    KeyY:'—', KeyU:'−F', KeyI:'−P', KeyO:'−L', KeyP:'−T', Backspace:'—',
+    KeyH:'—', KeyJ:'−R', KeyK:'−B', KeyL:'−G', Semicolon:'−S', Quote:'−Z',
+    KeyN:'—', KeyM:'—', Comma:'—', Period:'—', Slash:'—', Escape:'—',
+    Enter:'—', __MO2__:'E−', AltRight:'U−',
+  },
+};
+
+// Layer detect: when ZMK remaps a key, OS sends a different code.
+// Map OS code back to physical Corne position.
+const LAYER_REMAP = {
+  1: { // Lower: digits → QWERTY row
+    Digit1:'KeyQ', Digit2:'KeyW', Digit3:'KeyE', Digit4:'KeyR', Digit5:'KeyT',
+    Digit6:'KeyY', Digit7:'KeyU', Digit8:'KeyI', Digit9:'KeyO', Digit0:'KeyP',
+    ArrowLeft:'KeyH', ArrowDown:'KeyJ', ArrowUp:'KeyK', ArrowRight:'KeyL',
+  },
+  3: { // Adjust: F-keys → keyboard positions
+    F1:'ShiftLeft', F2:'KeyA', F3:'KeyS', F4:'KeyD', F5:'KeyF', F6:'KeyG',
+    F7:'ControlLeft', F8:'KeyZ', F9:'KeyX', F10:'KeyC', F11:'KeyV', F12:'KeyB',
+  },
+};
+
+// ── Theme (loaded from localStorage, set by theme-editor.html) ────────────
+const DEFAULT_THEME = {
+  layers: ['#9933ff','#22dd66','#3366ff','#ff6600','#ff33ff','#888888'],
+  keyBg:     '#120c22',
+  keyBorder: '#4b376e',
+  keyLabel:  'rgba(170,145,210,0.6)',
+  trailMs:   80,
+  animation: 'none',
+  animationSpeed: 1,
+};
+
+function _hexToRgb(hex) {
+  const n = parseInt(hex.replace('#',''), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+let LAYER_COLOR = {};
+let TRAIL_MS_THEME = 80;
+let ANIM_CLASS = '';
+const ANIM_DURATIONS = { 'glow-pulse': 1.5, 'rainbow': 3, 'breathe': 2 };
+
+function applyTheme(theme) {
+  const root = document.documentElement;
+  root.style.setProperty('--key-bg',     theme.keyBg);
+  root.style.setProperty('--key-border', theme.keyBorder);
+  root.style.setProperty('--key-label',  theme.keyLabel);
+  theme.layers.forEach((hex, i) => {
+    root.style.setProperty(`--layer-${i}`, hex);
+  });
+
+  TRAIL_MS_THEME = theme.trailMs;
+  ANIM_CLASS = theme.animation && theme.animation !== 'none' ? 'anim-' + theme.animation : '';
+
+  if (ANIM_CLASS) {
+    const baseDur = ANIM_DURATIONS[theme.animation] ?? 2;
+    const dur = baseDur / (theme.animationSpeed || 1);
+    root.style.setProperty('--anim-dur', dur.toFixed(2) + 's');
+  }
+
+  // rebuild layer colors helper
+  LAYER_COLOR = {};
+  theme.layers.forEach((hex, i) => {
+    const [r,g,b] = _hexToRgb(hex);
+    LAYER_COLOR[i] = {
+      bg:     `rgba(${r},${g},${b},.25)`,
+      border: `rgba(${r},${g},${b},.9)`,
+      glow:   `rgba(${r},${g},${b},.55)`,
+    };
+  });
+
+  for (const el of Object.values(keyElements)) {
+    el.classList.remove('anim-glow-pulse', 'anim-rainbow', 'anim-breathe');
+    if (ANIM_CLASS) el.classList.add(ANIM_CLASS);
+  }
+}
+
+// Initial theme load (will be applied in INIT after keyElements is built)
+const INITIAL_THEME = (() => {
+  try {
+    const s = localStorage.getItem('zmk-widget-theme');
+    if (s) return Object.assign({}, DEFAULT_THEME, JSON.parse(s));
+  } catch {}
+  return Object.assign({}, DEFAULT_THEME);
+})();
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════════════════════
+let currentLayer  = 0;
+let activeLayout  = 'qwerty';
+const keyElements  = {};   // code → DOM element
+const trailTimers  = {};   // pos  → timeout id
+// KEY FIX: track which element each code lit up (survives layer changes)
+const litElements  = {};   // code → element that was highlighted on press
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  LABELS
+// ═══════════════════════════════════════════════════════════════════════════
+function baseLabels() {
+  if (activeLayout === 'colemak') return BASE_COLEMAK;
+  if (activeLayout === 'russian') return BASE_RUSSIAN;
+  return BASE_QWERTY;
+}
+
+function getLabel(code) {
+  if (!code) return '';
+  if (currentLayer === 0) return baseLabels()[code] ?? fallback(code);
+  return LAYER_LABELS[currentLayer]?.[code] ?? baseLabels()[code] ?? fallback(code);
+}
+
+function fallback(code) {
+  return code.replace('Key','').replace('Digit','').slice(0,3);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  DOM BUILD
+// ═══════════════════════════════════════════════════════════════════════════
+function makeKey(code, isMO = false) {
+  const el = document.createElement('div');
+  el.className = 'key' + (isMO ? ' mo' : '');
+  const span = document.createElement('span');
+  span.className = 'lbl';
+  span.textContent = getLabel(code);
+  el.appendChild(span);
+  if (code) keyElements[code] = el;
+  return el;
+}
+
+function buildHalf(rows, moCode, thumbCodes, side) {
+  const half = document.createElement('div');
+  half.className = `half ${side}`;
+  for (const row of rows) {
+    const rowEl = document.createElement('div');
+    rowEl.className = 'row';
+    for (const code of row) rowEl.appendChild(makeKey(code));
+    half.appendChild(rowEl);
+  }
+  const thumbRow = document.createElement('div');
+  thumbRow.className = 'row thumb-row';
+  thumbRow.appendChild(makeKey(thumbCodes[0]));
+  thumbRow.appendChild(makeKey(moCode, true));
+  thumbRow.appendChild(makeKey(thumbCodes[1]));
+  half.appendChild(thumbRow);
+  return half;
+}
+
+function buildKeyboard() {
+  const kbd = document.getElementById('keyboard');
+  kbd.appendChild(buildHalf(LEFT_ROWS,  '__MO1__', ['MetaLeft', 'Space'],    'left'));
+  kbd.appendChild(buildHalf(RIGHT_ROWS, '__MO2__', ['Enter',    'AltRight'], 'right'));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  LAYER
+// ═══════════════════════════════════════════════════════════════════════════
+function setLayer(l) {
+  if (currentLayer === l) return;
+  const prev = currentLayer;
+  currentLayer = l;
+  document.querySelectorAll('.chip').forEach(c =>
+    c.classList.toggle('active', +c.dataset.l === l));
+  for (const [code, el] of Object.entries(keyElements))
+    el.querySelector('.lbl').textContent = getLabel(code);
+
+  // Highlight MO keys: MO1 → LOWER(1)/ADJUST(3), MO2 → RAISE(2)/ADJUST(3)
+  _updateMO('__MO1__', l > 0 && (l === 1 || l === 3), l);
+  _updateMO('__MO2__', l > 0 && (l === 2 || l === 3), l);
+}
+
+function _updateMO(code, active, layer) {
+  const el = keyElements[code];
+  if (!el) return;
+  if (active) {
+    const c = LAYER_COLOR[layer] ?? LAYER_COLOR[0];
+    el.style.background  = c.bg;
+    el.style.borderColor = c.border;
+    el.style.boxShadow   = `0 0 8px ${c.glow}, 0 0 14px ${c.glow}`;
+    el.querySelector('.lbl').style.color = '#fff';
+    if (ANIM_CLASS) el.classList.add(ANIM_CLASS);
+  } else {
+    el.style.background  = '';
+    el.style.borderColor = '';
+    el.style.boxShadow   = '';
+    el.querySelector('.lbl').style.color = '';
+    if (ANIM_CLASS) el.classList.remove(ANIM_CLASS);
+  }
+}
+
+document.querySelectorAll('.chip').forEach(c =>
+  c.addEventListener('click', () => setLayer(+c.dataset.l)));
+
+// ── Layer detection from incoming code ────────────────────────────────────
+const heldCodes = new Set();
+let layerLingerTimer = null;
+
+function detectLayer(code, layerHint) {
+  if (layerHint === 'raise') return 2;
+  if (/^Digit[0-9]$/.test(code)) return 1;       // Lower: digits from QWERTY row
+  if (/^Arrow/.test(code)) return 1;              // Lower: arrows from H/J/K/L
+  if (/^F([1-9]|1[0-2])$/.test(code)) return 3;  // Adjust: F-keys
+  if (MOUSE_TO_POS[code]) return 3;               // Adjust: mouse buttons
+  if (MOUSE_MOVE_TO_POS[code]) return 3;          // Adjust: mouse movement directions
+  // Unknown code → BASE. Never inherit a lingering layer for unrelated keys.
+  return 0;
+}
+
+// ── Resolve OS code → physical Corne position ─────────────────────────────
+function resolvePosition(code) {
+  if (MOUSE_TO_POS[code]) return MOUSE_TO_POS[code];
+  if (MOUSE_MOVE_TO_POS[code]) return MOUSE_MOVE_TO_POS[code];
+  // Digits and arrows use the same physical positions on both Lower (1) and Raise (2)
+  if (/^Digit[0-9]$/.test(code) || /^Arrow/.test(code))
+    return LAYER_REMAP[1][code] ?? code;
+  const remap = LAYER_REMAP[currentLayer];
+  return (remap && remap[code]) ? remap[code] : code;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  KEY PRESS / RELEASE
+// ═══════════════════════════════════════════════════════════════════════════
+
+function pressKey(code) {
+  const pos = resolvePosition(code);
+  const el = keyElements[pos] ?? keyElements[code];
+  if (!el) return;
+
+  // Cancel pending trail on this element
+  const trailKey = pos in keyElements ? pos : code;
+  if (trailTimers[trailKey]) {
+    clearTimeout(trailTimers[trailKey]);
+    delete trailTimers[trailKey];
+    el.classList.remove('trail');
+  }
+
+  const c = LAYER_COLOR[currentLayer] ?? LAYER_COLOR[0];
+  el.style.background   = c.bg;
+  el.style.borderColor  = c.border;
+  el.style.boxShadow    = `0 0 8px ${c.glow}, 0 0 18px ${c.glow}`;
+  el.classList.add('pressed');
+  if (ANIM_CLASS) el.classList.add(ANIM_CLASS);
+  el.querySelector('.lbl').style.color = '#fff';
+
+  // ← KEY FIX: remember which element this code activated
+  litElements[code] = { el, trailKey };
+}
+
+function releaseKey(code) {
+  // ← KEY FIX: use the element that was lit, not a new resolve (layer may have changed)
+  const entry = litElements[code];
+  delete litElements[code];
+  if (!entry) return;
+  const { el, trailKey } = entry;
+
+  el.classList.remove('pressed');
+  if (ANIM_CLASS) el.classList.remove(ANIM_CLASS);
+  el.classList.add('trail');
+
+  trailTimers[trailKey] = setTimeout(() => {
+    el.style.background  = '';
+    el.style.borderColor = '';
+    el.style.boxShadow   = '';
+    el.classList.remove('trail');
+    el.querySelector('.lbl').style.color = '';
+    delete trailTimers[trailKey];
+  }, TRAIL_MS_THEME);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  LAYOUT TOGGLE
+// ═══════════════════════════════════════════════════════════════════════════
+const layoutBtn = document.getElementById('layout-btn');
+
+const LAYOUT_NAMES = { qwerty: 'QWR', russian: 'РУС', colemak: 'CMK' };
+const LAYOUT_CYCLE = ['qwerty', 'russian', 'colemak'];
+
+function applyLayout(layout) {
+  activeLayout = layout;
+  layoutBtn.textContent = LAYOUT_NAMES[layout] ?? 'QWR';
+  layoutBtn.classList.remove('colemak', 'russian');
+  if (layout !== 'qwerty') layoutBtn.classList.add(layout);
+  for (const [code, el] of Object.entries(keyElements))
+    el.querySelector('.lbl').textContent = getLabel(code);
+}
+
+layoutBtn.addEventListener('click', () => {
+  const i = LAYOUT_CYCLE.indexOf(activeLayout);
+  applyLayout(LAYOUT_CYCLE[(i + 1) % LAYOUT_CYCLE.length]);
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  WEBSOCKET
+// ═══════════════════════════════════════════════════════════════════════════
+const statusDot = document.getElementById('status');
+let ws, reconnectTimer;
+
+function clearAllKeys() {
+  heldCodes.clear();
+  for (const code of Object.keys(litElements)) releaseKey(code);
+}
+
+function connect() {
+  ws = new WebSocket('ws://localhost:8765');
+
+  ws.onopen  = () => { statusDot.classList.add('ok'); clearTimeout(reconnectTimer); };
+  ws.onerror = () => ws.close();
+  ws.onclose = () => {
+    statusDot.classList.remove('ok');
+    clearAllKeys();
+    reconnectTimer = setTimeout(connect, 2000);
+  };
+
+  ws.onmessage = ({ data }) => {
+    let msg;
+    try { msg = JSON.parse(data); } catch { return; }
+
+    if (msg.type === 'UPDATE_THEME') {
+      applyTheme(msg.theme);
+      return;
+    }
+
+    if (msg.type === 'layout') { applyLayout(msg.layout); return; }
+
+    if (msg.type === 'mouse_move') {
+      setLayer(3);
+      clearTimeout(layerLingerTimer);
+      layerLingerTimer = setTimeout(() => { setLayer(0); layerLingerTimer = null; }, 800);
+      return;
+    }
+
+    const code = msg.code;
+    if (!code) return;
+
+    if (msg.type === 'cancel') {
+      // Phantom Shift from ZMK RAISE: undo the keydown we already sent
+      heldCodes.delete(code);
+      releaseKey(code);
+      return;
+    }
+
+    if (msg.type === 'keydown') {
+      if (heldCodes.has(code)) return;
+      heldCodes.add(code);
+      clearTimeout(layerLingerTimer);
+      layerLingerTimer = null;
+
+      let layer = detectLayer(code, msg.layer);
+
+      // Widget-side phantom-shift fallback: if a Digit arrives while Shift is held
+      // (bridge's 20ms window slipped), treat as RAISE and cancel the Shift visual.
+      if (layer === 1 && /^Digit[0-9]$/.test(code) && !msg.layer &&
+          (heldCodes.has('ShiftLeft') || heldCodes.has('ShiftRight'))) {
+        layer = 2;
+        for (const sh of ['ShiftLeft', 'ShiftRight']) {
+          if (heldCodes.has(sh)) { heldCodes.delete(sh); releaseKey(sh); }
+        }
+      }
+
+      setLayer(layer);
+      pressKey(code);
+
+    } else if (msg.type === 'keyup') {
+      heldCodes.delete(code);
+      releaseKey(code);
+
+      if (heldCodes.size === 0 && currentLayer !== 0) {
+        // Keep the layer indicator visible for 800ms after last key released.
+        // Covers the case where MO key is still physically held but sends no code.
+        clearTimeout(layerLingerTimer);
+        layerLingerTimer = setTimeout(() => { setLayer(0); layerLingerTimer = null; }, 800);
+      }
+    }
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════════════════
+buildKeyboard();
+applyTheme(INITIAL_THEME);
+setLayer(0);
+connect();
+</script>
+</body>
+</html>

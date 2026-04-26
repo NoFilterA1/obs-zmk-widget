@@ -1,0 +1,16 @@
+[Unit]
+Description=ZMK keyboard OBS widget bridge (ZMK / BLE mode)
+After=default.target
+
+[Service]
+Type=simple
+WorkingDirectory=INSTALL_DIR
+ExecStartPre=-/usr/bin/fuser -k 8765/tcp
+ExecStart=INSTALL_DIR/venv/bin/python -u key-bridge.py
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target
