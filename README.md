@@ -6,6 +6,8 @@ Real-time key-press visualizer for OBS Studio. Shows a live Corne split-keyboard
 
 ![widget preview](docs/preview.png)
 
+*(a live screenshot from OBS is even better here once you have one — swap it in any time)*
+
 ---
 
 ## Features
@@ -50,7 +52,7 @@ ZMK keyboard (BLE / USB)
 ## Quick start
 
 ```bash
-git clone https://github.com/kovaleksd/obs-zmk-widget
+git clone https://github.com/NoFilterA1/obs-zmk-widget
 cd obs-zmk-widget
 bash install.sh
 ```
@@ -128,8 +130,6 @@ Expected output:
 ## Theme editor
 
 Open `theme-editor.html` in any browser (Chromium recommended for accurate color pickers).
-
-![theme editor](docs/theme-editor.png)
 
 **Sidebar** — 11 built-in themes grouped by *Color* and *Animated*. Your custom themes live in *My Themes*.
 
@@ -220,7 +220,7 @@ venv/bin/python key-bridge.py /dev/input/eventX
 
 **RAISE layer symbols appear as LOWER when typing fast**
 
-Increase `PHANTOM_MS` in `key-bridge.py` (line ~22):
+Increase `PHANTOM_MS` in `key-bridge.py` (line ~186):
 ```python
 PHANTOM_MS = 0.030  # try 30 ms instead of 20 ms
 ```
