@@ -218,6 +218,10 @@ body {
   background: var(--accent-d); color: #cc99ff; border-color: var(--accent);
 }
 .btn-primary:hover { box-shadow: 0 0 8px var(--accent-g); opacity: 1; }
+.btn-apply {
+  background: #0e2a1a; color: #44cc77; border-color: #1a5a33;
+}
+.btn-apply:hover { box-shadow: 0 0 8px #44cc7744; opacity: 1; }
 .btn-ghost {
   background: transparent; color: var(--text2); border-color: var(--bd2);
 }
@@ -390,6 +394,9 @@ body {
   0%,100% { opacity: .55; }
   50%      { opacity: 1; }
 }
+.mk.ap { animation: glow-pulse var(--mk-dur, 1.5s) ease-in-out infinite; }
+.mk.ar { animation: rainbow-hue var(--mk-dur, 3s) linear infinite; }
+.mk.ab { animation: breathe var(--mk-dur, 2s) ease-in-out infinite; }
 
 /* ══════════════════════════════════════════════════════════
    DIALOGS
@@ -464,6 +471,7 @@ body {
       <div class="ed-actions">
         <span class="toast" id="toast"></span>
         <button class="btn btn-ghost" id="btn-copy">{ } JSON</button>
+        <button class="btn btn-apply" id="btn-apply">▶ Apply</button>
         <button class="btn btn-primary" id="btn-save">Save theme</button>
       </div>
     </div>
@@ -1035,6 +1043,10 @@ const litElements    = {};
 const trailTimers    = {};
 let mkElements       = {}; // code → .mk DOM element
 
+const ANIM_MAP = { 'glow-pulse':'ap', 'rainbow':'ar', 'breathe':'ab' };
+const ANIM_DUR  = { 'glow-pulse':1.5, 'rainbow':3, 'breathe':2 };
+let animClass = '';
+
 function computeLayerColor() {
   LAYER_COLOR = {};
   theme.layers.forEach((hex, i) => {
@@ -1045,6 +1057,12 @@ function computeLayerColor() {
       glow:   `rgba(${r},${g},${b},.5)`,
     };
   });
+
+  animClass = ANIM_MAP[theme.animation] ?? '';
+  if (animClass) {
+    const dur = (ANIM_DUR[theme.animation] ?? 2) / (theme.animationSpeed || 1);
+    document.documentElement.style.setProperty('--mk-dur', dur.toFixed(2) + 's');
+  }
 }
 
 function detectLayer(code) {
@@ -1083,6 +1101,8 @@ function setLayer(l) {
   });
 }
 
+const ALL_ANIM = ['ap', 'ar', 'ab'];
+
 function pressKey(code) {
   const pos = resolvePos(code);
   const el  = mkElements[pos] ?? mkElements[code];
@@ -1093,6 +1113,8 @@ function pressKey(code) {
   el.style.background  = c.bg     ?? '';
   el.style.borderColor = c.border ?? '';
   el.style.boxShadow   = `0 0 6px ${c.glow ?? 'transparent'}, 0 0 12px ${c.glow ?? 'transparent'}`;
+  ALL_ANIM.forEach(a => el.classList.remove(a));
+  if (animClass) el.classList.add(animClass);
   litElements[code] = { el, tk };
 }
 
@@ -1102,18 +1124,20 @@ function releaseKey(code) {
   const { el, tk } = entry;
   const ms = theme.trailMs ?? 80;
   trailTimers[tk] = setTimeout(() => {
-    el.style.background = el.style.borderColor = el.style.boxShadow = '';
+    ALL_ANIM.forEach(a => el.classList.remove(a));
+    idleStyle(el);
+    el.style.color = colorToHex(theme.keyLabel) + '99';
     delete trailTimers[tk];
   }, ms);
 }
 
 function clearAllKeys() {
   heldCodes.clear();
-  for (const code of Object.keys(litElements)) releaseKey(code);
-  for (const [tk, t] of Object.entries(trailTimers)) { clearTimeout(t); delete trailTimers[tk]; }
-  for (const el of Object.values(mkElements)) {
-    el.style.background = el.style.borderColor = el.style.boxShadow = '';
-  }
+  for (const t of Object.values(trailTimers)) clearTimeout(t);
+  Object.keys(trailTimers).forEach(k => delete trailTimers[k]);
+  Object.keys(litElements).forEach(k => delete litElements[k]);
+  const lbl = colorToHex(theme.keyLabel) + '99';
+  mkeyEls.forEach(el => { ALL_ANIM.forEach(a => el.classList.remove(a)); idleStyle(el); el.style.color = lbl; });
 }
 
 let mkeyEls = []; // all .mk elements (for theme color updates)
@@ -1153,16 +1177,18 @@ function buildMiniKbd() {
   kbd.appendChild(half(MK_RIGHT_ROWS, MK_RIGHT_THUMB, true));
 }
 
+function idleStyle(el) {
+  el.style.background  = theme.keyBg;
+  el.style.borderColor = colorToHex(theme.keyBorder) + '80';
+  el.style.boxShadow   = '';
+}
+
 function updateMiniKbd() {
-  const bg  = theme.keyBg;
-  const bd  = colorToHex(theme.keyBorder) + '80';
+  // Build set of elements currently lit (pressed)
+  const litEls = new Set(Object.values(litElements).map(e => e.el));
   const lbl = colorToHex(theme.keyLabel) + '99';
   mkeyEls.forEach(k => {
-    // only reset keys that aren't currently lit by a key press
-    if (!k.style.boxShadow) {
-      k.style.background  = bg;
-      k.style.borderColor = bd;
-    }
+    if (!litEls.has(k)) idleStyle(k);
     k.style.color = lbl;
   });
 }
@@ -1239,6 +1265,12 @@ function toast(msg) {
 }
 
 document.getElementById('btn-save').addEventListener('click', saveTheme);
+
+document.getElementById('btn-apply').addEventListener('click', () => {
+  persistWidgetTheme(themeForWidget(theme));
+  sendLive();
+  toast('Applied to widget!');
+});
 
 document.getElementById('btn-copy').addEventListener('click', () => {
   navigator.clipboard.writeText(JSON.stringify(themeForWidget(theme), null, 2))
