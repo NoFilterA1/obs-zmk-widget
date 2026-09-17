@@ -4,9 +4,7 @@ Real-time key-press visualizer for OBS Studio. Shows a live Corne split-keyboard
 
 > Works with any ZMK split keyboard: **Corne**, **VTwin**, **Lily58**, etc.
 
-![widget preview](docs/preview.png)
-
-*(a live screenshot from OBS is even better here once you have one — swap it in any time)*
+![widget preview](docs/preview.jpg)
 
 ---
 
